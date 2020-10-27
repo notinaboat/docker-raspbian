@@ -1,3 +1,7 @@
+FROM terasakisatoshi/jlcross:rpizero-v1.5.2 AS jlcross
+WORKDIR /home/pi
+RUN tar czf julia.tgz julia-v*
+
 FROM debian:buster-slim
 
 ENV RPI_QEMU_KERNEL kernel-qemu-4.19.50-buster
@@ -29,22 +33,23 @@ RUN curl $RASPBIAN_IMAGE_URL/$RASPBIAN_IMAGE.zip > raspbian.zip \
 &&  curl https://raw.githubusercontent.com/dhruvvyas90/qemu-rpi-kernel/$RPI_QEMU_KERNEL_COMMIT/$RPI_QEMU_KERNEL > kernel-qemu-buster \
 &&  curl -O https://raw.githubusercontent.com/dhruvvyas90/qemu-rpi-kernel/$RPI_QEMU_KERNEL_COMMIT/versatile-pb.dtb
 
-# Install rc.local
+# Pad the image to 4G
+RUN qemu-img resize -f raw raspbian.img 4G
+
+
+# Run the expand rootfs script in the emulator
+COPY expand_rootfs.sh .
+COPY qemu.sh .
+RUN guestfish --rw -m /dev/sda2 -a raspbian.img \
+              upload expand_rootfs.sh /etc/rc.local : \
+              chmod 0755 /etc/rc.local
+RUN bash qemu.sh
+
+# Install julia.tgz and run the rc.local script in the emulator
+COPY --from=jlcross /home/pi/julia.tgz .
 COPY rc.local .
 RUN guestfish --rw -m /dev/sda2 -a raspbian.img \
               upload rc.local /etc/rc.local : \
-              chmod 0755 /etc/rc.local
-
-# Pad the image to 2G
-RUN qemu-img resize -f raw raspbian.img 2G
-
-# Boot the emulator
-RUN qemu-system-arm -cpu arm1176                                               \
-                    -m 256                                                     \
-                    -machine versatilepb                                       \
-                    -dtb versatile-pb.dtb                                      \
-                    -kernel kernel-qemu-buster                                 \
-                    -append "root=/dev/sda2 rootfstype=ext4 rw'"               \
-                    -drive format=raw,index=0,media=disk,file=raspbian.img     \
-                    -nographic                                                 \
-                    -no-reboot
+              chmod 0755 /etc/rc.local : \
+              tgz-in julia.tgz /home/pi/
+RUN bash qemu.sh

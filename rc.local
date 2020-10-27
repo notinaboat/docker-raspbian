@@ -3,6 +3,16 @@
 # Source: http://ala-paavola.fi/jaakko/doku.php?id=pi-readonly
 # Note: https://gist.github.com/gbaman/975e2db164b3ca2b51ae11e45e8fd40a
 
+echo "*** Install extra packages ***"
+apt install -y \
+    avrdude \
+    pigpio \
+    libopenblas-dev \
+    liblapack-dev \
+    libgmp3-dev \
+    libmpfr-dev
+
+
 echo "*** Install busybox-syslogd ***"
 apt install busybox-syslogd -y
 
@@ -14,6 +24,9 @@ echo "hdmi_blanking=2" >> /boot/config.txt
 
 echo "*** Disable SD Card Resize ***"
 sed -i 's/init=[^ ]*//' /boot/cmdline.txt
+
+echo "*** Disable Serial Console ***"
+sed -i 's/console=serial[^ ]*//' /boot/cmdline.txt
 
 echo "*** Enable USB OTG Ethernet ***"
 echo "dtoverlay=dwc2" >> /boot/config.txt
@@ -56,6 +69,6 @@ sed -i 's/ext4    defaults/ext4    defaults,ro/' /etc/fstab
 
 rm /etc/rc.local
 
-shutdown -r now
+systemctl reboot
 
 exit 0
