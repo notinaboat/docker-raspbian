@@ -1,19 +1,20 @@
 
 # docker-raspbian
 
-[![Docker Build Status](https://img.shields.io/docker/build/hannseman/raspbian.svg)](https://hub.docker.com/r/hannseman/raspbian/)
+(Based on https://github.com/hannseman/docker-raspbian)
 
-This docker image runs QEMU system emulation for Raspbian Buster Lite.
-It will let you run Raspbian as if it was running on an actual Raspberry PI.
+This Dockerfile builds a headless Raspbian Buster Lite image for Pi Zero W with:
+ * USB OTG Ethernet Interface
+ * WiFI
+ * OpenSSH Server
+ * Read-only filesystems
 
 ## Usage
 
-SSH is enabled on port `2222`. The username is `pi` and the password is `raspberry`.
+Edit `rc.local` to configure `ssid=` and `psk=` for your WiFi network
 
-To run the container:
+Type `make` to build the image.
 
-`docker run -it -p 2222:2222 --privileged hannseman/raspbian`
+Copy the image to an SD card: `dd bs=1m if=raspbian.img of=/dev/diskN`
 
-To connect with SSH:
-
-`ssh -p 2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no pi@localhost`
+Use `id_pi.pem` to connect by ssh: `ssh -i id_pi.pem pi@raspberrypi.local`

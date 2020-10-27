@@ -2,15 +2,14 @@ FROM debian:buster-slim
 
 ENV RPI_QEMU_KERNEL kernel-qemu-4.19.50-buster
 ENV RPI_QEMU_KERNEL_COMMIT 8121f35cd6814ffbde5a18783eb04abb1c0c336a
-ENV RASPBIAN_IMAGE 2020-02-13-raspbian-buster-lite
-ENV RASPBIAN_IMAGE_URL https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2020-02-14/
+ENV RASPBIAN_IMAGE 2020-08-20-raspios-buster-armhf-lite
+ENV RASPBIAN_IMAGE_URL https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2020-08-24/
 
 WORKDIR /root
 
 # Install dependencies
-RUN set -x \
-    && apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update \
+&&  apt-get install -y -q \
         busybox \
         curl \
         qemu \
@@ -19,25 +18,33 @@ RUN set -x \
         unzip \
         linux-image-amd64 \
         netcat \
-    && rm -rf /var/lib/apt/lists/
+&&  apt-get clean \
+&&  rm -rf /var/lib/apt/lists/
 
 # Download image, kernel and DTB
-RUN set -x \
-    && curl -O $RASPBIAN_IMAGE_URL/$RASPBIAN_IMAGE.zip \
-    && unzip $RASPBIAN_IMAGE.zip \
-    && rm $RASPBIAN_IMAGE.zip \
-    && curl https://raw.githubusercontent.com/dhruvvyas90/qemu-rpi-kernel/$RPI_QEMU_KERNEL_COMMIT/$RPI_QEMU_KERNEL > kernel-qemu-buster \
-    && curl -O https://raw.githubusercontent.com/dhruvvyas90/qemu-rpi-kernel/$RPI_QEMU_KERNEL_COMMIT/versatile-pb.dtb
+RUN curl $RASPBIAN_IMAGE_URL/$RASPBIAN_IMAGE.zip > raspbian.zip \
+&&  unzip raspbian.zip \
+&&  rm raspbian.zip \
+&&  mv $RASPBIAN_IMAGE.img raspbian.img \
+&&  curl https://raw.githubusercontent.com/dhruvvyas90/qemu-rpi-kernel/$RPI_QEMU_KERNEL_COMMIT/$RPI_QEMU_KERNEL > kernel-qemu-buster \
+&&  curl -O https://raw.githubusercontent.com/dhruvvyas90/qemu-rpi-kernel/$RPI_QEMU_KERNEL_COMMIT/versatile-pb.dtb
 
-# Convert image to qcow2, resize it and enable SSH
-RUN set -x \
-    && qemu-img convert -f raw -O qcow2 $RASPBIAN_IMAGE.img raspbian-lite.qcow2 \
-    && rm $RASPBIAN_IMAGE.img \
-    && qemu-img resize raspbian-lite.qcow2 +2G \
-    && guestfish --rw -m /dev/sda1 -a raspbian-lite.qcow2 write /ssh ""
+# Install rc.local
+COPY rc.local .
+RUN guestfish --rw -m /dev/sda2 -a raspbian.img \
+              upload rc.local /etc/rc.local : \
+              chmod 0755 /etc/rc.local
 
-EXPOSE 2222
+# Pad the image to 2G
+RUN qemu-img resize -f raw raspbian.img 2G
 
-HEALTHCHECK CMD ["nc", "-z", "-w5", "localhost", "2222"]
-
-CMD ["qemu-system-arm", "-kernel", "kernel-qemu-buster", "-append", "root=/dev/sda2 rootfstype=ext4 rw'", "-hda", "raspbian-lite.qcow2", "-cpu", "arm1176", "-m", "256", "-machine", "versatilepb", "-no-reboot", "-dtb", "versatile-pb.dtb", "-nographic", "-net", "user,hostfwd=tcp::2222-:22", "-net", "nic"]
+# Boot the emulator
+RUN qemu-system-arm -cpu arm1176                                               \
+                    -m 256                                                     \
+                    -machine versatilepb                                       \
+                    -dtb versatile-pb.dtb                                      \
+                    -kernel kernel-qemu-buster                                 \
+                    -append "root=/dev/sda2 rootfstype=ext4 rw'"               \
+                    -drive format=raw,index=0,media=disk,file=raspbian.img     \
+                    -nographic                                                 \
+                    -no-reboot

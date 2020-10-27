@@ -1,0 +1,61 @@
+#!/bin/sh -e
+
+# Source: http://ala-paavola.fi/jaakko/doku.php?id=pi-readonly
+# Note: https://gist.github.com/gbaman/975e2db164b3ca2b51ae11e45e8fd40a
+
+echo "*** Install busybox-syslogd ***"
+apt install busybox-syslogd -y
+
+echo "*** Disable PrivateTmp ***"
+sed -i 's/PrivateTmp=yes/PrivateTmp=no/' /lib/systemd/system/systemd-hostnamed.service
+
+echo "*** Disable HDMI output ***"
+echo "hdmi_blanking=2" >> /boot/config.txt
+
+echo "*** Disable SD Card Resize ***"
+sed -i 's/init=[^ ]*//' /boot/cmdline.txt
+
+echo "*** Enable USB OTG Ethernet ***"
+echo "dtoverlay=dwc2" >> /boot/config.txt
+sed -i 's/rootwait/rootwait modules-load=dwc2,g_ether g_ether.host_addr=f3-91-83-bb-b6-af g_ether.dev_addr=52-81-f6-87-a5-64/' /boot/cmdline.txt
+
+echo "*** Configure WIFI ***"
+cat >> /etc/wpa_supplicant/wpa_supplicant.conf << EOF
+country=AU
+network={
+    ssid="XXXXXX"
+    psk="XXXXXX"
+}
+EOF
+
+echo "*** Enable SSH ***"
+systemctl enable ssh
+mkdir -p /home/pi/.ssh
+echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDOic/GsgE3ji9WbNwYAtveGonaPpjA2viCHmjnDOP8HOc/BSFuEkQ4h8dF/wmoG27gj9SwzwGgapQRRHMUTAfzz6aMsisjH1LLR5/AQBUqk/YhyHTfyXxFnM7mOgSTvRQgL/K1dOY+4StHaDR3fKP10Dw4bYqMvksR8QyTv5wnLbJ//wetxv1t/vxh5EhauA8dNQI8uqKngwKmdgmiTxViLDcy1yyJANf3JWZ2i/x+Re9BOfWksK1c4EbjPs582i0xOZ7AwqGiQCj7Z2mZtdjUTVB+dRmTLO2XiQeVj09D7TVDJgaRIHGUGSuvebOwpIcboLvCvTtuMn3XDA5czOjiWS7LNxlarB0/iI4BuQjF416lIS45ctBYXxvYNp4PKp7x6y+ERm1LbNrQBYhrQLo0OwbT09GEXRXoXZ2AbZU5+6pVApE1l146kXVY/u34LMSTC5qwMLU4ZpWbU3g38ylMUbo8bKU+U+ej571t6CH2goVsKtvS+bnHsB8EjgOH70E= pi@raspberrypi.local" > /home/pi/.ssh/authorized_keys
+chown -R pi:pi /home/pi/.ssh
+chmod 700 /home/pi/.ssh
+chmod 600 /home/pi/.ssh/authorized_keys
+
+echo "*** CREATE RAM FILESYSTEM ***"
+echo 'none    /tmp            tmpfs   size=28M,mode=01777 0 0' >> /etc/fstab
+echo 'none    /var/log         tmpfs   size=16M 0 0' >> /etc/fstab
+mount -a
+
+echo "*** DISABLE EXTRA SERVICES ***"
+systemctl disable dphys-swapfile.service
+systemctl disable apt-daily.service apt-daily.timer apt-daily-upgrade.timer apt-daily-upgrade.service
+systemctl disable logrotate.service logrotate.timer
+
+echo "*** CREATE MOUNT SCRIPTS ***"
+echo "alias _rw='sudo mount / -o remount,rw;  sudo mount /boot -o remount,rw'" >> /home/pi/.bashrc
+echo "alias _ro='sudo mount / -o remount,ro; sudo mount /boot -o remount,ro'" >> /home/pi/.bashrc
+
+echo "*** MAKE FILESYSTEM READ-ONLY ***"
+sed -i 's/vfat    defaults/vfat    defaults,ro/' /etc/fstab
+sed -i 's/ext4    defaults/ext4    defaults,ro/' /etc/fstab
+
+rm /etc/rc.local
+
+shutdown -r now
+
+exit 0
