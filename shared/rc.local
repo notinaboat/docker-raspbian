@@ -3,7 +3,9 @@
 # Source: http://ala-paavola.fi/jaakko/doku.php?id=pi-readonly
 # Note: https://gist.github.com/gbaman/975e2db164b3ca2b51ae11e45e8fd40a
 
-echo "*** Install extra packages ***"
+df -h
+
+echo "*** Install extra debian packages ***"
 apt install -y \
     avrdude \
     pigpio \
@@ -12,6 +14,9 @@ apt install -y \
     libgmp3-dev \
     libmpfr-dev
 
+echo "*** Install /usr/local packages ***"
+mount -t vfat /dev/sdb1 /mnt
+tar -C /usr/local -xzf /mnt/*.tgz
 
 echo "*** Install busybox-syslogd ***"
 apt install busybox-syslogd -y
@@ -33,13 +38,9 @@ echo "dtoverlay=dwc2" >> /boot/config.txt
 sed -i 's/rootwait/rootwait modules-load=dwc2,g_ether g_ether.host_addr=f3-91-83-bb-b6-af g_ether.dev_addr=52-81-f6-87-a5-64/' /boot/cmdline.txt
 
 echo "*** Configure WIFI ***"
-cat >> /etc/wpa_supplicant/wpa_supplicant.conf << EOF
-country=AU
-network={
-    ssid="XXXXXX"
-    psk="XXXXXX"
-}
-EOF
+rm /etc/wpa_supplicant/wpa_supplicant.conf
+cp /mnt/wpa_supplicant.conf /boot/wpa
+ln -s /boot/wpa /etc/wpa_supplicant/wpa_supplicant.conf
 
 echo "*** Enable SSH ***"
 systemctl enable ssh

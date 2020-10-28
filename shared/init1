@@ -1,0 +1,29 @@
+# Source: https://gitlab.com/JimDanner/pi-boot-script/-/blob/master/unattended
+
+# Create temporary /run filesystem.
+mount -t tmpfs tmp /run
+mkdir -p /run/systemd
+
+# Make root file system read-write.
+mount / -o remount,rw
+
+
+# Install rc.local
+cp /mnt/rc.local /etc/rc.local
+chmod 755 /etc/rc.local
+
+# Expand the root fs to fill the parition.
+raspi-config --expand-rootfs nonint
+
+
+# Unmount /boot and make root read-only.
+sync
+umount /boot
+mount / -o remount,ro
+sync
+
+# Immediately reboot the system without syncing or unmounting disks.
+# https://www.kernel.org/doc/html/v4.11/admin-guide/sysrq.html
+echo 1 > /proc/sys/kernel/sysrq
+echo b > /proc/sysrq-trigger
+sleep 5

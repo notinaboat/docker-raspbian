@@ -8,7 +8,8 @@ build:
 	docker build --progress plain --tag $(NAME):$(VERSION) .
 
 extract:
-	docker create --name $(TMP) $(NAME):$(VERSION)
+	docker run --name $(TMP) $(NAME):$(VERSION) \
+        qemu-img convert -O raw rpi.qcow2 raspbian.img
 	docker cp $(TMP):/root/raspbian.img .
 	docker rm $(TMP)
 
@@ -16,4 +17,5 @@ run:
 	docker run --name $(TMP) --rm -it $(NAME):$(VERSION)
 
 emu:
-	docker run --name $(TMP) --rm -it $(NAME):$(VERSION) bash qemu.sh
+	docker run --name $(TMP) --rm -it $(NAME):$(VERSION) bash qemu.sh init1
+
