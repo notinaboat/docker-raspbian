@@ -17,5 +17,5 @@ run:
 	docker run --name $(TMP) --rm -it $(NAME):$(VERSION)
 
 emu:
-	docker run --name $(TMP) --rm -it $(NAME):$(VERSION) bash qemu.sh init1
+	docker run --name $(TMP) --rm -it $(NAME):$(VERSION) bash qemu.sh
 

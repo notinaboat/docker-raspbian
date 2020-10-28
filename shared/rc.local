@@ -2,8 +2,13 @@
 
 # Source: http://ala-paavola.fi/jaakko/doku.php?id=pi-readonly
 # Note: https://gist.github.com/gbaman/975e2db164b3ca2b51ae11e45e8fd40a
+# Note: https://gist.github.com/thenaterhood/56301c3bf7d784a33ab6c46778aa8179
+# Note: https://medium.com/swlh/make-your-raspberry-pi-file-system-read-only-raspbian-buster-c558694de79
 
 df -h
+
+echo "*** Set Timezeone ***"
+timedatectl set-timezone Australia/Melbourne
 
 echo "*** Install extra debian packages ***"
 apt install -y \
@@ -35,12 +40,18 @@ sed -i 's/console=serial[^ ]*//' /boot/cmdline.txt
 
 echo "*** Enable USB OTG Ethernet ***"
 echo "dtoverlay=dwc2" >> /boot/config.txt
-sed -i 's/rootwait/rootwait modules-load=dwc2,g_ether g_ether.host_addr=f3-91-83-bb-b6-af g_ether.dev_addr=52-81-f6-87-a5-64/' /boot/cmdline.txt
+sed -i 's/rootwait/rootwait noswap modules-load=dwc2,g_ether g_ether.host_addr=f3-91-83-bb-b6-af g_ether.dev_addr=52-81-f6-87-a5-64/' /boot/cmdline.txt
 
 echo "*** Configure WIFI ***"
 rm /etc/wpa_supplicant/wpa_supplicant.conf
 cp /mnt/wpa_supplicant.conf /boot/wpa
 ln -s /boot/wpa /etc/wpa_supplicant/wpa_supplicant.conf
+
+echo "*** Enable resolv.conf ***"
+cp /etc/resolv.conf /var/run/resolv.conf
+rm /etc/resolv.conf
+ln -sf /var/run/resolv.conf /etc/resolv.conf
+sed -i 's/resolv_conf=.*/resolv_conf=\/var\/run\/resolv.conf/' /etc/resolvconf.conf
 
 echo "*** Enable SSH ***"
 systemctl enable ssh
