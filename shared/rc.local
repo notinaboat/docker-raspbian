@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+# TODO: See overlay filesystem option in raspi-config:
+# https://github.com/RPi-Distro/raspi-config/commit/5d7664812bbeb8a31cb77b70326fab1b257e0946
 # Source: http://ala-paavola.fi/jaakko/doku.php?id=pi-readonly
 # Note: https://gist.github.com/gbaman/975e2db164b3ca2b51ae11e45e8fd40a
 # Note: https://gist.github.com/thenaterhood/56301c3bf7d784a33ab6c46778aa8179
@@ -12,7 +14,10 @@ timedatectl set-timezone Australia/Melbourne
 
 echo "*** Install extra debian packages ***"
 apt install -y \
+    autofs \
     avrdude \
+    avr-libc \
+    gpiod \
     pigpio \
     libopenblas-dev \
     liblapack-dev \
@@ -22,6 +27,10 @@ apt install -y \
 echo "*** Install /usr/local packages ***"
 mount -t vfat /dev/sdb1 /mnt
 tar -C /usr/local -xzf /mnt/*.tgz
+ln -s /usr/local/julia-*/bin/julia /usr/local/bin/julia
+sudo -u pi julia -e 'using Pkg; Pkg.update()'
+cp /mnt/*toml /home/pi/.julia/environments/v1.5/
+sudo -u pi julia -e 'using Pkg; Pkg.instantiate()'
 
 echo "*** Install busybox-syslogd ***"
 apt install busybox-syslogd -y
@@ -36,16 +45,27 @@ echo "*** Disable SD Card Resize ***"
 sed -i 's/init=[^ ]*//' /boot/cmdline.txt
 
 echo "*** Disable Serial Console ***"
-sed -i 's/console=serial[^ ]*//' /boot/cmdline.txt
+sudo raspi-config nonint do_serial 1
 
 echo "*** Enable USB OTG Ethernet ***"
 echo "dtoverlay=dwc2" >> /boot/config.txt
 sed -i 's/rootwait/rootwait noswap modules-load=dwc2,g_ether g_ether.host_addr=f3-91-83-bb-b6-af g_ether.dev_addr=52-81-f6-87-a5-64/' /boot/cmdline.txt
 
+echo "*** Enable i2c ***"
+raspi-config nonint do_i2c 0
+
 echo "*** Configure WIFI ***"
 rm /etc/wpa_supplicant/wpa_supplicant.conf
 cp /mnt/wpa_supplicant.conf /boot/wpa
 ln -s /boot/wpa /etc/wpa_supplicant/wpa_supplicant.conf
+
+echo "*** Configure Hostname ***"
+cp /etc/hostname /etc/hosts /boot
+rm /etc/hostname /etc/hosts
+ln -s /boot/hostname /etc/hostname
+ln -s /boot/hosts /etc/hosts
+cp /mnt/fixhostname.service /etc/systemd/system/
+systemctl enable fixhostname.service
 
 echo "*** Enable resolv.conf ***"
 cp /etc/resolv.conf /var/run/resolv.conf
@@ -70,6 +90,7 @@ echo "*** DISABLE EXTRA SERVICES ***"
 systemctl disable dphys-swapfile.service
 systemctl disable apt-daily.service apt-daily.timer apt-daily-upgrade.timer apt-daily-upgrade.service
 systemctl disable logrotate.service logrotate.timer
+systemctl disable alsa-utils triggerhappy
 
 echo "*** CREATE MOUNT SCRIPTS ***"
 echo "alias _rw='sudo mount / -o remount,rw;  sudo mount /boot -o remount,rw'" >> /home/pi/.bashrc
@@ -80,6 +101,7 @@ sed -i 's/vfat    defaults/vfat    defaults,ro/' /etc/fstab
 sed -i 's/ext4    defaults/ext4    defaults,ro/' /etc/fstab
 
 rm /etc/rc.local
+ln -s /boot/rc.local /etc/rc.local
 
 systemctl reboot
 

@@ -1,0 +1,11 @@
+[deps]
+CompilerSupportLibraries_jll = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+LLVM = "929cbde3-209d-540e-8aea-75f648917ca0"
+MbedTLS_jll = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"

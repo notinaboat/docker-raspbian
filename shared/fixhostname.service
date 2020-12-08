@@ -1,0 +1,13 @@
+[Unit]
+Description=Update hostname from /boot/hostname
+Before=systemd-networkd.target
+After=mountdata.service
+RequiresMountsFor=/boot
+DefaultDependencies=no
+
+[Service]
+Type=simple
+ExecStart=hostname -F /etc/hostname
+
+[Install]
+WantedBy=multi-user.target
