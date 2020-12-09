@@ -56,7 +56,12 @@ raspi-config nonint do_i2c 0
 
 echo "*** Configure WIFI ***"
 rm /etc/wpa_supplicant/wpa_supplicant.conf
-cp /mnt/wpa_supplicant.conf /boot/wpa
+if [ -f /mnt/wpa_supplicant.conf.secret ]
+then
+    cp /mnt/wpa_supplicant.conf.secret /boot/wpa/wpa_supplicant.conf
+else
+    cp /mnt/wpa_supplicant.conf /boot/wpa
+fi
 ln -s /boot/wpa /etc/wpa_supplicant/wpa_supplicant.conf
 
 echo "*** Configure Hostname ***"
